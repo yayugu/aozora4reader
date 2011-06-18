@@ -137,7 +137,7 @@ class Aozora4Reader
       l.gsub!(/※［＃濁点付き片仮名([ワヰヱヲ])、.*?］/){ "\\ajLig{#{$1}゛}"}
     end
     if l =~ /※［＃感嘆符三つ.*］/
-      l.gsub!(/※［＃感嘆符三つ.*?］/){ "\\rensuji{!!!}"}
+      l.gsub!(/※［＃感嘆符三つ.*?］/){ "<rensuji>!!!</rensuji>"}
     end
 
     if l =~ /※［＃.*?([A-Za-z0-9_]+\.png).*?］/
@@ -433,7 +433,7 @@ class Aozora4Reader
 
       ## ちょっと汚いけど二重指定の対策
       if line =~ /［＃「(.*?)」は縦中横］［＃「(.*?)」は中見出し］/
-        line.gsub!(/(.*?)［＃「(\1)」は縦中横］［＃「(\1)」は中見出し］/){"<h4>\\rensuji{#{$1}}</h4>"}
+        line.gsub!(/(.*?)［＃「(\1)」は縦中横］［＃「(\1)」は中見出し］/){"<h4><rensuji>#{$1}</rensuji></h4>"}
       end
 
       if line =~ /［＃「(.*?)」は大見出し］/
@@ -481,15 +481,15 @@ class Aozora4Reader
       end
 
       if line =~ /［＃「(.*?)」は太字］/
-        line.gsub!(/(.+)［＃「\1」は太字］/,'{\\textbf{\1}}')
+        line.gsub!(/(.+)［＃「\1」は太字］/,'<b>\1</b>')
       end
       if line =~ /［＃「.+?」は縦中横］/
-        line.gsub!(/(.+)［＃「\1」は縦中横］/, '\\rensuji{\1}')
+        line.gsub!(/(.+)［＃「\1」は縦中横］/, '<rensuji>\1</rensuji>')
       end
       if line =~ /［＃「(１)(／)(\d+)」は分数］/
         bunshi = to_single_byte($1)
         bunbo = $3
-        line.gsub!(/(.+)［＃「.+?」は分数］/, "\\rensuji{#{bunshi}/#{bunbo}}")
+        line.gsub!(/(.+)［＃「.+?」は分数］/, "<rensuji>#{bunshi}/#{bunbo}</rensuji>")
       end
       if line =~ /［＃「.+?」は罫囲み］/
         line.gsub!(/(.+)［＃「\1」は罫囲み］/, '\\fbox{\1}')
@@ -517,7 +517,7 @@ class Aozora4Reader
       if line =~ /［＃「.+?」は斜体］/
         line.gsub!(/(.+)［＃「\1」は斜体］/){
           shatai = to_single_byte($1).tr("ａｂｃｄｅｆｇｈｉｊｋｌｍｎｏｐｑｒｓｔｕｖｗｘｙｚ","abcdefghijklmnopqrstuvwxyz")
-          "\\rensuji{\\textsl{"+shatai+"}}"
+          "<rensuji>\\textsl{"+shatai+"}</rensuji>"
         }
       end
       if line =~ /［＃「[０-９0-9]」は下付き小文字］/
