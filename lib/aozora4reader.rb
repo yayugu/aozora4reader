@@ -5,6 +5,9 @@
 #
 # Also another source is "青空キンドル [Beta]"
 # see: http://a2k.aill.org/
+#
+# Also another source is "aozora4reader"
+# see: https://github.com/takahashim/aozora4reader
 
 require 'nkf'
 
@@ -19,13 +22,15 @@ class Aozora4Reader
   end
 
   def initialize(file)
-    @inputfile_name = file
+    @inputfile = file
 
     @jisage = false
     @log_text = []
     @line_num=0
     @gaiji = {}
     @gaiji2 = {}
+
+    @html = ''
   end
 
   # UTF-8で出力
@@ -68,44 +73,13 @@ class Aozora4Reader
   def preamble
     title = remove_ruby(@title)
     author = remove_ruby(@author)
-    str = <<"END_OF_PRE"
-\\documentclass[a5paper]{tbook}
-%\\documentclass[a5paper, twocolumn]{tbook}
-%\\usepackage[deluxe]{otf}
-\\usepackage[expert, deluxe]{otf}
-%\\usepackage{utf}
-\\usepackage{furikana}
-\\usepackage{type1cm}
-\\usepackage[size=large]{aozora4reader}
-\\def\\rubykatuji{\\rubyfamily\\tiny}
-%\\def\\rubykatuji{\\tiny}%for UTF package
-%\\renewenvironment{teihon}{\\comment}{\\endcomment}
-\\usepackage[dvipdfm,bookmarks=false,bookmarksnumbered=false,hyperfootnotes=false,%
-            pdftitle={#{title}},%
-            pdfauthor={#{author}}]{hyperref}
-%% Bookmarkの文字化け対策（日本語向け）
-\\ifnum 46273=\\euc"B4C1 % 46273 == 0xB4C1 == 漢(EUC-JP)
-  \\AtBeginDvi{\\special{pdf:tounicode EUC-UCS2}}%
-\\else
-  \\AtBeginDvi{\\special{pdf:tounicode 90ms-RKSJ-UCS2}}%
-\\fi
-
-END_OF_PRE
-
+    str = "<html>\n"
     str
   end
 
   # 底本の表示用
   def postamble
-    str = <<"END_OF_POST"
-\\theendnotes
-\\begin{teihon}
-\\clearpage\\null\\newpage\\thispagestyle{empty}
-\\begin{minipage}<y>{\\textheight}
-\\vspace{1\\baselineskip}
-\\scriptsize
-END_OF_POST
-
+    str = "<teihon>\n"
     str
   end
 
@@ -203,32 +177,32 @@ END_OF_POST
     # 一連のルビの処理
     # １ 縦棒ありの場合
     if l =~ /｜/
-      l.gsub!(/｜(.+?)《(.+?)》/, '\\ruby{\1}{\2}')
+      l.gsub!(/｜(.+?)《(.+?)》/, '<ruby><rb>\1</rb><rt>\2</rt></ruby>')
     end
 
     # ２ 漢字および外字
     if l =~ /(?:#{KANJIPAT}|(?:\\UTF\{[0-9a-fA-F]+\}|\\CID\{[0-9]+\}))+?《.+?》/
-      l.gsub!(/((?:#{KANJIPAT}|(?:\\UTF\{[0-9a-fA-F]+\}|\\CID\{[0-9]+\}))+?)《(.+?)》/, '\\ruby{\1}{\2}')
+      l.gsub!(/((?:#{KANJIPAT}|(?:\\UTF\{[0-9a-fA-F]+\}|\\CID\{[0-9]+\}))+?)《(.+?)》/, '<ruby><rb>\1</rb><rt>\2</rt></ruby>')
     end
 
     # ３ ひらがな
     if l =~ /[あ-ん](?:[ぁ-んーヽヾ]|\\CID\{12107\})*?《.+?》/
-      l.gsub!(/([あ-ん](?:[ぁ-んーヽヾ]|\\CID\{12107\})*?)《(.+?)》/, '\\ruby{\1}{\2}')
+      l.gsub!(/([あ-ん](?:[ぁ-んーヽヾ]|\\CID\{12107\})*?)《(.+?)》/, '<ruby><rb>\1</rb><rt>\2</rt></ruby>')
     end
 
     # ４ カタカナ
     if l =~ /[ア-ヴ](?:[ァ-ヴーゝゞ]|\\CID\{12107\})*?《.+?》/
-      l.gsub!(/([ア-ヴ](?:[ァ-ヴーゝゞ]|\\CID\{12107\})*?)《(.+?)》/, '\\ruby{\1}{\2}')
+      l.gsub!(/([ア-ヴ](?:[ァ-ヴーゝゞ]|\\CID\{12107\})*?)《(.+?)》/, '<ruby><rb>\1</rb><rt>\2</rt></ruby>')
     end
 
     # ５ 全角アルファベットなど
     if l =~ /[Ａ-Ｚａ-ｚΑ-Ωα-ωА-Яа-я・]+?《.+?》/
-      l.gsub!(/([Ａ-Ｚａ-ｚΑ-Ωα-ωА-Яа-я・]+?)《(.+?)》/, '\\ruby{\1}{\2}')
+      l.gsub!(/([Ａ-Ｚａ-ｚΑ-Ωα-ωА-Яа-я・]+?)《(.+?)》/, '<ruby><rb>\1</rb><rt>\2</rt></ruby>')
     end
 
     # ６ 半角英数字
     if l =~ /[A-Za-z0-9#_\-\;\&.\'\^\`\\\{\} ]+?《.+?》/
-      l.gsub!(/([A-Za-z0-9#_\-\;\&.\'\^\`\\\{\} ]+?)《(.+?)》/, '\\ruby{\1}{\2}')
+      l.gsub!(/([A-Za-z0-9#_\-\;\&.\'\^\`\\\{\} ]+?)《(.+?)》/, '<ruby><rb>\1</rb><rt>\2</rt></ruby>')
     end
     if l =~ /《.*?》/
       STDERR.puts("Unknown ruby pattern found in #@line_num.")
@@ -256,7 +230,7 @@ END_OF_POST
           str = $1
           str.gsub!(/(\\UTF{.+?})/){ "{"+$1+"}"}
           str.gsub!(/(\\ruby{.+?}{.+?})/i){ "{"+$1+"}"}
-          "\\#{fun}{"+str+"}"
+          "<bou type=#{fun}>"+str+"</bou>"
         }
       end
     }
@@ -266,7 +240,7 @@ END_OF_POST
         str = $1
         str.gsub!(/(\\UTF{.+?})/){ "{"+$1+"}"}
         str.gsub!(/(\\ruby{.+?}{.+?})/i){ "{"+$1+"}"}
-        "\\bou{"+str+"}"
+        "<bou>"+str+"</bou>"
       }
     end
     return l
@@ -311,18 +285,6 @@ END_OF_POST
     end
   end
 
-  # 傍点の調整
-  def tuning_bou(l)
-    # 傍点の中の「くの字点」を変換
-    while l =~ /(\\[a-z]*?bou\{(?:\w|(?:\\UTF\{[0-9a-fA-F]+\}|\\CID\{[0-9]+\}))+?)(\\ajD?Kunoji)\{\}((?:\w|(?:\\UTF\{[0-9a-fA-F]+\}|\\CID\{[0-9]+\}))*?)\}/
-      l.gsub!(/((\\([a-z]*?)bou)\{(?:\w|(?:\\UTF\{[0-9a-fA-F]+\}|\\CID\{[0-9]+\}))+?)(\\ajD?Kunoji)\{\}((?:\w|(?:\\UTF\{[0-9a-fA-F]+\}|\\CID\{[0-9]+\}))*?)\}/, '\1}\4with\3Bou\2{\5}')
-    end
-    if l =~ /\\[a-z]*?bou\{\}/
-      l.gsub!(/\\([a-z]*?)bou\{\}/, '{}')
-    end
-    return l
-  end
-
   # 外字用ハッシュを作成
   def load_gaiji
     datadir = File.dirname(__FILE__)+"/../data"
@@ -342,87 +304,11 @@ END_OF_POST
         @gaiji2[key] = data
       end
     end
-
   end
 
-  # 
-  # メインパート
-  # 
-  def main
-    load_gaiji()
 
-    # 入出力ファイルの定義
-    outputfile_name = @inputfile_name.sub(/\.txt$/, ".tex")
-    inputfile = File.open(@inputfile_name, "r:SJIS")
-    outputfile = File.open(outputfile_name, "w:UTF-8")
-
-    # プリアンブルの処理
-    empty_line = 0
-    in_note = false
-    meta_data = []
-    while empty_line < 2
-      line = inputfile.gets.chomp
-      line = NKF::nkf('-wS', line)
-      if in_note
-        if line =~ /^-+$/
-          in_note = false
-          break
-        end
-      else
-        if line =~ /^-+$/
-          in_note = true
-        else
-          if line =~ /^$/
-            empty_line += 1
-          else
-            if line =~ /《.*?》/
-              translate_ruby(line)
-            end
-            meta_data << line
-          end
-        end
-      end
-    end
-
-    @line_num +=  meta_data.size
-    @title = normalize(meta_data.shift)
-    case meta_data.size
-    when 1
-      @author = normalize(meta_data.shift)
-    when 2
-      @subtitle = normalize(meta_data.shift)
-      @author = normalize(meta_data.shift)
-    when 3
-      @subtitle = normalize(meta_data.shift)
-      @author = normalize(meta_data.shift)
-      @subauthor = normalize(meta_data.shift)
-    else
-      @subtitle = normalize(meta_data.shift)
-      @meta_data = []
-      until meta_data.empty?
-        @meta_data << normalize(meta_data.shift)
-      end
-      @subauthor = @meta_data.pop
-      @author = @meta_data.pop
-    end
-
-    outputfile.write(preamble())
-
-    outputfile.print "\\title{"+@title+"}\n"
-    outputfile.print "\\subtitle{"+@subtitle+"}\n" if @subtitle
-    outputfile.print "\\author{"+@author+"}\n"
-    outputfile.print "\\subauthor{"+@subauthor+"}\n" if @subauthor
-
-    if @meta_data
-      @meta_data.each do |data|
-        outputfile.print "\\metadata{"+data+"}\n"
-      end
-    end
-    outputfile.print "\\date{}\n"
-
-    # 本文の処理
-    outputfile.print "\\begin{document}\n\\maketitle\n"
-
+  # 本文の処理
+  def body inputfile
     @line_num += PreambleLineNumber
     while line = inputfile.gets
       @line_num += 1
@@ -430,33 +316,6 @@ END_OF_POST
       line = NKF::nkf('-wS', line)
 
       break if line =~ /^底本/
-      if line =~ /^　「/
-        line.sub!(/^　「/, "\\mbox{　}\\kern0mm\\inhibitglue「")
-      end
-      if line =~ /[ワヰヱヲ]゛/
-        line.gsub!(/ワ゛/, "\\ajLig{ワ゛}")
-        line.gsub!(/ヰ゛/, "\\ajLig{ヰ゛}")
-        line.gsub!(/ヱ゛/, "\\ajLig{ヱ゛}")
-        line.gsub!(/ヲ゛/, "\\ajLig{ヲ゛}")
-      end
-      if line =~ /[？！]　/
-        line.gsub!(/([？！])　/, '\1{}')
-      end
-      if line =~ /——/
-        line.gsub!(/——/, "\\——{}")
-      end
-      if line =~ /／＼/
-        line.gsub!(/／＼/, "\\ajKunoji{}")
-      end
-      if line =~ /／″＼/
-        line.gsub!(/／″＼/, "\\ajDKunoji{}")
-      end
-
-=begin
-	if line =~ /^　　+.+/
-		line.gsub!(/^　　+([一二三四五六七八九〇十].*)/, '\\section*{\1}')
-	end
-=end
 
       while line =~ /(.+?)［＃(「\1」は横?[１|一]文字[^］]*?)］/
         line = line.sub(/(.+?)［＃(「\1」は横?[１|一]文字[^］]*?)］/){"\\ajLig{"+to_single_byte($1)+"}"}
@@ -465,7 +324,7 @@ END_OF_POST
         line.sub!(/［＃改丁.*?］/, "\\cleardoublepage")
       end
       if line =~ /［＃改[頁|ページ].*?］/
-        line.sub!(/［＃改[頁|ページ].*?］/, "\\clearpage")
+        line.sub!(/［＃改[頁|ページ].*?］/, "<pagebreak />")
       end
 
       if line =~ /〔.*?〕/
@@ -488,8 +347,8 @@ END_OF_POST
         translate_bousen(line)
       end
       if line =~ /［＃この行.*?([１２３４５６７８９０一二三四五六七八九〇十]*)字下げ］/
-        outputfile.print "\\begin{jisage}{"+to_single_byte($1)+"}\n"
-        line = line.sub(/［＃この行.*?字下げ］/, "")+"\n\\end{jisage}"
+        @html << "　" * to_single_byte($1).to_i
+        line = line.sub(/［＃この行.*?字下げ］/, "")
         @line_num += 2
       end
 
@@ -504,7 +363,7 @@ END_OF_POST
 
       if line =~ /［＃ここから改行天付き、折り返して.*?字下げ］/
         if @jisage
-          outputfile.print "\\end{jisage}\n"
+          @html << "\\end{jisage}\n"
           @line_num += 1
         end
         line.sub!(/［＃ここから改行天付き、折り返して([１２３４５６７８９０一二三四五六七八九〇十]*)字下げ］/){"\\begin{jisage}{#{to_single_byte($1)}}\\setlength\\parindent{-"+to_single_byte($1)+"zw}"}
@@ -512,15 +371,15 @@ END_OF_POST
       end
 
       if line =~ /［＃.*?字下げ[^］]*?(?:終わり|まで)[^］]*?］/ 
-        line = line.sub(/［＃.*?字下げ.*?(?:終わり|まで).*?］/, "")+"\\end{jisage}"
+        line = line.sub(/［＃.*?字下げ.*?(?:終わり|まで).*?］/, "")+"</jisage>"
         @jisage = false
       end
       if line =~ /［＃(ここから|これより|ここより|以下).+字下げ.*?］/
         if @jisage
-          outputfile.print "\\end{jisage}\n"
+          html << "</jisage>\n"
           @line_num += 1
         end
-        line.sub!(/［＃(ここから|これより|ここより|以下).*?([１２３４５６７８９０一二三四五六七八九〇十]*)字下げ.*?］/){"\\begin{jisage}{"+to_single_byte($2)+"}"}
+        line.sub!(/［＃(ここから|これより|ここより|以下).*?([１２３４５６７８９０一二三四五六七八九〇十]*)字下げ.*?］/){"<jisage num='"+to_single_byte($2)+"'>"}
         @jisage = true
       end
       if line =~ /^［＃ここから地付き］$/
@@ -568,36 +427,36 @@ END_OF_POST
         if num > MAX_SAGE
           num = MAX_SAGE
         end
-        outputfile.print "\\begin{jisage}{#{num}}\n"
-        line = line.sub(/［＃.*?字下げ］/, "")+"\n\\end{jisage}"
+        @html << "　" * num
+        line = line.sub(/［＃.*?字下げ］/, "")
       end
 
       ## ちょっと汚いけど二重指定の対策
       if line =~ /［＃「(.*?)」は縦中横］［＃「(.*?)」は中見出し］/
-        line.gsub!(/(.*?)［＃「(\1)」は縦中横］［＃「(\1)」は中見出し］/){"{\\large \\rensuji{#{$1}}}"}
+        line.gsub!(/(.*?)［＃「(\1)」は縦中横］［＃「(\1)」は中見出し］/){"<h4>\\rensuji{#{$1}}</h4>"}
       end
 
       if line =~ /［＃「(.*?)」は大見出し］/
-        line.gsub!(/(.*?)［＃「(.*?)」は大見出し］/){"{\\Large #{$1}}"}
+        line.gsub!(/(.*?)［＃「(.*?)」は大見出し］/){"<h3>#{$1}</h3>"}
       end
       if line =~ /［＃「(.*?)」は中見出し］/
-        line.gsub!(/(.*?)［＃「(.*?)」は中見出し］/){"{\\large #{$1}}"}
+        line.gsub!(/(.*?)［＃「(.*?)」は中見出し］/){"<h4>#{$1}</h4>"}
       end
       if line =~ /［＃「(.*?)」は小見出し］/
-        line.gsub!(/(.*?)［＃「(.*?)」は小見出し］/){"{\\gtfamily #{$1}}"}
+        line.gsub!(/(.*?)［＃「(.*?)」は小見出し］/){"<h5>#{$1}</h5>"}
       end
       if line =~ /［＃小見出し］(.*?)［＃小見出し終わり］/
-        line.gsub!(/［＃小見出し］(.*?)［＃小見出し終わり］/){"{\\gtfamily #{$1}}"}
+        line.gsub!(/［＃小見出し］(.*?)［＃小見出し終わり］/){"<h5>#{$1}</h5>"}
       end
       if line =~ /［＃中見出し］(.*?)［＃中見出し終わり］/
-        line.gsub!(/［＃中見出し］(.*?)［＃中見出し終わり］/){"{\\large #{$1}}"}
+        line.gsub!(/［＃中見出し］(.*?)［＃中見出し終わり］/){"<h4>#{$1}</h4>"}
       end
 
       if line =~ /［＃ここから中見出し］/
-        line.gsub!(/［＃ここから中見出し］/){"{\\large"}
+        line.gsub!(/［＃ここから中見出し］/){"<h4>"}
       end
       if line =~ /［＃ここで中見出し終わり］/
-        line.gsub!(/［＃ここで中見出し終わり］/){"}"}
+        line.gsub!(/［＃ここで中見出し終わり］/){"</h4>"}
       end
 
       if line =~ /［＃ページの左右中央］/
@@ -684,7 +543,7 @@ END_OF_POST
       end
       line.tr!("┌┐┘└│─┏┓┛┗┃━→","┐┘└┌─│┓┛┗┏━┃↓")
       if line =~ /［＃改段］/
-        line.sub!(/［＃改段］/, "\\clearpage")
+        line.sub!(/［＃改段］/, "<pagebreak />")
       end
       if line =~ /[aioeu]\^/i
         line.gsub!(/([aioeu])\^/i){ "\\\^{#{$1}}"}
@@ -697,7 +556,7 @@ END_OF_POST
         if num > MAX_SAGE
           num = MAX_SAGE
         end
-        outputfile.print "\\begin{jisage}{#{num}}\n"
+        @html << "\\begin{jisage}{#{num}}\n"
         line = line.sub(/［＃天から.*?字下げ］/, "")+"\n\\end{jisage}"
       end
 
@@ -706,9 +565,6 @@ END_OF_POST
       if line =~ /［＃[^］]+?］/
         line.gsub!(/［＃([^］]+?)］/, '\\endnote{\1}')
       end
-      if line =~ /\\[a-z]*?bou/
-        tuning_bou(line)
-      end
       if line =~ /\\ajD?Kunoji\{\}\}/
         line.gsub!(/(\\ajD?Kunoji)\{\}\}/, '\1}')
       end
@@ -716,24 +572,100 @@ END_OF_POST
         tuning_ruby(line)
       end
       if line =~ /^$/
-        line = "　"
+        line = ""
       end
-      outputfile.print normalize(line)+"\n"
+      @html << normalize(line)+"\n\n"
+    end
+  end
+
+
+  # 
+  # メインパート
+  # 
+  def main
+    load_gaiji()
+
+    # プリアンブルの処理
+    empty_line = 0
+    in_note = false
+    meta_data = []
+    while empty_line < 2
+      line = @inputfile.gets.chomp
+      line = NKF::nkf('-wS', line)
+      if in_note
+        if line =~ /^-+$/
+          in_note = false
+          break
+        end
+      else
+        if line =~ /^-+$/
+          in_note = true
+        else
+          if line =~ /^$/
+            empty_line += 1
+          else
+            if line =~ /《.*?》/
+              translate_ruby(line)
+            end
+            meta_data << line
+          end
+        end
+      end
     end
 
-    # 底本の処理
-    outputfile.write(postamble())
-    outputfile.print normalize(line)+"\n"
-    while line = inputfile.gets
-      line.chomp!
-      line = NKF::nkf('-wS', line)
-      outputfile.print normalize(line)+"\n"
+    @line_num +=  meta_data.size
+    @title = normalize(meta_data.shift)
+    case meta_data.size
+    when 1
+      @author = normalize(meta_data.shift)
+    when 2
+      @subtitle = normalize(meta_data.shift)
+      @author = normalize(meta_data.shift)
+    when 3
+      @subtitle = normalize(meta_data.shift)
+      @author = normalize(meta_data.shift)
+      @subauthor = normalize(meta_data.shift)
+    else
+      @subtitle = normalize(meta_data.shift)
+      @meta_data = []
+      until meta_data.empty?
+        @meta_data << normalize(meta_data.shift)
+      end
+      @subauthor = @meta_data.pop
+      @author = @meta_data.pop
     end
-    outputfile.print "\n\\end{minipage}\n\\end{teihon}\n\\end{document}\n"
-    if @log_text.size > 0
-      until @log_text.empty?
-        outputfile.print @log_text.shift
+
+    @html << preamble()
+
+    @html << "<title>" + @title + "</title>\n"
+    @html << "<subtitle>" + @subtitle + "</subtitle>\n" if @subtitle
+    @html << "<author>" + @author + "</author>\n"
+    @html << "<subauthor>" + @subauthor + "</subauthor>\n" if @subauthor
+
+    if @meta_data
+      @meta_data.each do |data|
+        @html << "<metadata>"+data+"</metadata>\n"
       end
     end
+
+    # 本文の処理
+    body @inputfile
+
+    # 底本の処理
+    @html << postamble()
+    @html << normalize(line)+"\n"
+    while line = @inputfile.gets
+      line.chomp!
+      line = NKF::nkf('-wS', line)
+      @html << normalize(line)+"\n"
+    end
+    @html << "\n</teihon></html>"
+    if @log_text.size > 0
+      until @log_text.empty?
+        @html << @log_text.shift
+      end
+    end
+
+    return @html
   end
 end
