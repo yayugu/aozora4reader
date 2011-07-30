@@ -1,10 +1,3 @@
-$(function(){
-  $("#url").submit(function(e){
-    var link = "http://localhost:2525/azr?url=" + $("#url_text").attr('value');
-    $("#url_generated").append("<a href=" + link + ">" + link + "</a>");
-  });
-});
-
 function addPaginationLinks(searcher) {
   var cursor = searcher.cursor;
   var curPage = cursor.currentPageIndex;
@@ -31,7 +24,8 @@ function searchComplete(searchControl, searcher) {
     var searchResults = $('#searchResult');
     searchResults.html('');
 
-    var baseUrl = "http://localhost:2525/";
+    var baseUrl = $("base").attr('url');
+    var evalbookUrl = $("evalbook").attr('url');
 
     addPaginationLinks(searcher);
 
@@ -54,7 +48,8 @@ function searchComplete(searchControl, searcher) {
 
       var account = $('#account').val();
 
-      var url = baseUrl + "azr?url=" + encodeURIComponent(result.url);
+      var url = baseUrl + "/azr?url=" + encodeURIComponent(result.url);
+      url = evalbookUrl + "/view?source_url=" + encodeURIComponent(url);
       var downloadLink = $('<a />');
       downloadLink.attr('href', url);
       downloadLink.addClass('gsc-keeper');

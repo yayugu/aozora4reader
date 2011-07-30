@@ -2,6 +2,8 @@
   %head
     %meta{'http-equiv' =>"Content-Type", :content => 'text/html; charset=UTF-8'}
     %link{:rel => 'stylesheet', :href => "#{base_url}/stylesheet.css", :type => 'text/css'}
-    %title aozora4evalbook
+    %title aozora2evalbook
+    %base{url: base_url}
+    %evalbook{url: "http://evalbook.yayugu.net"}
   %body
     =yield  
