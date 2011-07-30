@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 # encoding: utf-8
 
+$LOAD_PATH.unshift File.join(File.dirname(__FILE__), "../lib")
 require 'aozora4reader'
 
 def error_and_exit(msg)
@@ -21,8 +22,8 @@ if !File.exists? file
   error_and_exit "No such file: #{file}"
 end
 
-outputfile_name = file.sub(/\.txt$/, ".tex")
-File.open(file, "r:SJIS") do |input|
+outputfile_name = file.sub(/\.txt$/, ".html")
+File.open(file, "r:SJIS:UTF-8") do |input|
   File.open(outputfile_name, "w:UTF-8") do |output|
     output.write Aozora4Reader.a4r(input)
   end

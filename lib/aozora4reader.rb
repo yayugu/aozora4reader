@@ -9,8 +9,6 @@
 # Also another source is "aozora4reader"
 # see: https://github.com/takahashim/aozora4reader
 
-require 'nkf'
-
 class Aozora4Reader
 
   PreambleLineNumber=13
@@ -79,7 +77,8 @@ class Aozora4Reader
 
   # 底本の表示用
   def postamble
-    str = "<teihon>\n"
+    #str = "<teihon>\n"
+    str = '<ignore>'
     str
   end
 
@@ -313,7 +312,6 @@ class Aozora4Reader
     while line = inputfile.gets
       @line_num += 1
       line.chomp!
-      line = NKF::nkf('-wS', line)
 
       break if line =~ /^底本/
 
@@ -497,20 +495,7 @@ class Aozora4Reader
       if line =~ /［＃「(.+?)」は(本文より)?([１２３４５６])段階大きな文字］/
         line.gsub!(/([^［]+?)［＃「\1」は(本文より)?([１２３４５６])段階大きな文字］/) {
           num = to_single_byte($3).to_i
-          case num
-          when 1
-            "{\\large #{$1}}"
-          when 2
-            "{\\Large #{$1}}"
-          when 3
-            "{\\LARGE #{$1}}"
-          when 4
-            "{\\huge #{$1}}"
-          when 5
-            "{\\Huge #{$1}}"
-          when 6
-            "{\\Huge #{$1}}"
-          end
+          "<font size='+#{num}'>#{$1}</font>"
         }
       end
 
@@ -563,7 +548,7 @@ class Aozora4Reader
       line.gsub!(/［＃図形　□（四角）に内接する◆］/, '{\setlength{\fboxsep}{0pt}\fbox{◆}}')
 
       if line =~ /［＃[^］]+?］/
-        line.gsub!(/［＃([^］]+?)］/, '\\endnote{\1}')
+        line.gsub!(/［＃([^］]+?)］/, '<note>{\1}</note>')
       end
       if line =~ /\\ajD?Kunoji\{\}\}/
         line.gsub!(/(\\ajD?Kunoji)\{\}\}/, '\1}')
@@ -574,7 +559,9 @@ class Aozora4Reader
       if line =~ /^$/
         line = ""
       end
-      @html << normalize(line)+"\n\n"
+      line = normalize(line)+"\n\n"
+      line.gsub!(/\\UTF\{(.*?)\}/, '<utf>\1</utf>')
+      @html << line
     end
   end
 
@@ -591,7 +578,6 @@ class Aozora4Reader
     meta_data = []
     while empty_line < 2
       line = @inputfile.gets.chomp
-      line = NKF::nkf('-wS', line)
       if in_note
         if line =~ /^-+$/
           in_note = false
@@ -637,6 +623,7 @@ class Aozora4Reader
 
     @html << preamble()
 
+    @html << "<set bungaku_style='true' />"
     @html << "<title>" + @title + "</title>\n"
     @html << "<subtitle>" + @subtitle + "</subtitle>\n" if @subtitle
     @html << "<author>" + @author + "</author>\n"
@@ -656,10 +643,10 @@ class Aozora4Reader
     @html << normalize(line)+"\n"
     while line = @inputfile.gets
       line.chomp!
-      line = NKF::nkf('-wS', line)
       @html << normalize(line)+"\n"
     end
-    @html << "\n</teihon></html>"
+    #@html << "\n</teihon></html>"
+    @html << '</ignore></html>'
     if @log_text.size > 0
       until @log_text.empty?
         @html << @log_text.shift
